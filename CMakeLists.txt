@@ -8,7 +8,7 @@ set(OPENSSL_ROOT_DIR /usr/local/opt/openssl@3)
 
 find_package(OpenSSL REQUIRED)
 
-add_executable(SecurityProtocol main.cpp)
+add_executable(SecurityProtocol main.cpp itcastderlog.h itcast_asn1_der.h keymng_msg.h itcastderlog.cpp itcast_asn1_der.cpp)
 
 install(TARGETS SecurityProtocol
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})

@@ -4,10 +4,78 @@
 #include <stdlib.h>
 #include <openssl/aes.h>
 #include <openssl/md5.h>
+#include "itcast_asn1_der.h"
 using namespace std;
+//teacher结构体，测试编解码模块
+typedef struct _Teacher
+{
+    char name[64];
+    int age;
+    char *p;
+    long plen;
+}Teacher;
+int encodeTeacher(Teacher * p, char ** outData, int * outlen)
+{
+    ITCAST_ANYBUF *head = NULL;
+    ITCAST_ANYBUF *temp = NULL;
+    ITCAST_ANYBUF *next = NULL;
+    DER_ITCAST_String_To_AnyBuf(&temp, reinterpret_cast<unsigned char*>(p->name), strlen(p->name)+1);
+    DER_ItAsn1_WritePrintableString(temp, &head);
+    DER_ITCAST_FreeQueue(temp);
+    next = head;
+    DER_ItAsn1_WriteInteger(p->age, &next->next);
+    next = next->next;
+    EncodeChar(p->p, strlen(p->p)+1, &next->next);
+    next = next->next;
+    DER_ItAsn1_WriteInteger(p->plen, &next->next);
+    DER_ItAsn1_WriteSequence(head, &temp);
+    *outData = reinterpret_cast<char*>(temp->pData);
+    *outlen = temp->dataLen;
+    DER_ITCAST_FreeQueue(head);
+    return 0;
+}
+int decodeTeacher(char * inData, int inLen, Teacher ** p)
+{
+    ITCAST_ANYBUF *head = NULL;
+    ITCAST_ANYBUF *temp = NULL;
+    ITCAST_ANYBUF *next = NULL;
+    Teacher *pt = (Teacher *)malloc(sizeof(Teacher));
+    if (pt == NULL){
+        return -1;
+    }
+    DER_ITCAST_String_To_AnyBuf(&temp, reinterpret_cast<unsigned char*>(inData), inLen);
+    DER_ItAsn1_ReadSequence(temp, &head);
+    DER_ITCAST_FreeQueue(temp);
+    next = head;
+    DER_ItAsn1_ReadPrintableString(next, &temp);
+    memcpy(pt->name, temp->pData, temp->dataLen);
+    next = next->next;
+    DER_ITCAST_FreeQueue(temp);
+    DER_ItAsn1_ReadInteger(next, reinterpret_cast<unsigned long*>(&pt->age));
+    next = next->next;
+    int len = 0;
+    DecodeChar(next, &pt->p, &len);
+    next = next->next;
+    DER_ItAsn1_ReadInteger(next, reinterpret_cast<unsigned long*>(&pt->plen));
+    *p = pt;
+    DER_ITCAST_FreeQueue(head);
+    return 0;
+}
+
+void freeTeacher(Teacher ** p)
+{
+    if ((*p) != NULL){
+        if ((*p)->p != NULL){
+            free((*p)->p);
+        }
+        free(*p);
+    }
+}
+
 //获取给定字符串的MD5散列值
 void getMD5(string str, string& result)
 {
+    if(!str.size())return;
     MD5_CTX ctx;    //声明一个 MD5 上下文结构体 MD5_CTX，以便在后续计算中存储中间结果。
     MD5_Init(&ctx);  //初始化 MD5 上下文结构体
     MD5_Update(&ctx, str.c_str(), str.size()); //将要计算的字符串作为输入，更新 MD5 上下文结构体
@@ -18,8 +86,27 @@ void getMD5(string str, string& result)
         sprintf(&result[i * 2], "%02x", md[i]);
     }
 }
+
 int main()
 {
+    Teacher tea;
+    memset(&tea, 0x00, sizeof(Teacher));
+    strcpy(tea.name, "abc");
+    tea.age = 20;
+    tea.p = (char*)malloc(100);
+    strcpy(tea.p, "hello hello hello");
+    tea.plen = strlen(tea.p);
+    char* outData;
+    int outlen;
+    encodeTeacher(&tea, &outData, &outlen);
+    //===============================================
+    Teacher* pt;
+    decodeTeacher(outData, outlen, &pt);
+    printf("name:	%s\n", pt->name);
+    printf("age:	%d\n", pt->age);
+    printf("p:	%s\n", pt->p);
+    printf("plen:	%d\n", pt->plen);
+    freeTeacher(&pt);
     string result(33,0);
     getMD5("hello, md5", result);
     printf("md5 value: %s\n", result.c_str());
