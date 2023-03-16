@@ -4,7 +4,9 @@
 #include <stdlib.h>
 #include <openssl/aes.h>
 #include <openssl/md5.h>
+#include <openssl/sha.h>
 #include "itcast_asn1_der.h"
+#include "PoolSocket.h"
 using namespace std;
 //teacher结构体，测试编解码模块
 typedef struct _Teacher
@@ -89,6 +91,60 @@ void getMD5(string str, string& result)
 
 int main()
 {
+    PoolSocket pool;
+    PoolParam param;
+    param.bounds = 10;
+    param.connecttime = 100;
+    param.revtime = 100;
+    param.sendtime = 100;
+    param.serverip = "127.0.0.1";
+    param.serverport = 9999;
+    pool.poolInit(&param);
+    queue<TcpSocket*> list;
+    while (pool.curConnSize())
+    {
+        static int i = 0;
+        TcpSocket* sock = pool.getConnect();
+        string str = "hello, server ... " + to_string(i++);
+        sock->sendMsg((char*)str.c_str(), str.size());
+        list.push(sock);
+    }
+    while (!list.empty())
+    {
+        TcpSocket* t = list.front();
+        pool.putConnect(t, false);
+        list.pop();
+    }
+    cout << "max value: " << pool.curConnSize() << endl;
+    while (1);
+
+    char data[1024] = "xiaowu,hello world";
+    int len = strlen(data);
+    unsigned char md[SHA512_DIGEST_LENGTH] = {0};
+    //int SHA512_Init(SHA512_CTX *c);
+    //int SHA512_Update(SHA512_CTX *c, const void *data, size_t len);
+    //int SHA512_Final(unsigned char *md, SHA512_CTX *c);
+    SHA512_CTX c;
+    SHA512_Init(&c);
+    SHA512_Update(&c, data, len);
+    SHA512_Final(md, &c);
+    //cout << md << endl;
+    char buf[SHA512_DIGEST_LENGTH * 2 + 1] = { 0 };
+    for (int i = 0; i < SHA512_DIGEST_LENGTH; i++)
+    {
+        sprintf(&buf[i*2], "%02x", md[i]);
+    }
+    cout << buf << endl;
+    //unsigned char *SHA512(const unsigned char *d, size_t n, unsigned char *md);
+    memset(md, 0x00, sizeof(md));
+    unsigned char data1[1024]= "xiaowu,hello world";
+    SHA512(data1, len, md);
+    memset(buf, 0x00, sizeof(buf));
+    for (int i = 0; i < SHA512_DIGEST_LENGTH; i++)
+    {
+        sprintf(&buf[i * 2], "%02x", md[i]);
+    }
+    cout << buf << endl;
     Teacher tea;
     memset(&tea, 0x00, sizeof(Teacher));
     strcpy(tea.name, "abc");
