@@ -1,5 +1,7 @@
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.14)
 add_compile_options(-w)
+cmake_policy(SET CMP0079 NEW)
+
 project(SecurityProtocol LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
@@ -8,15 +10,16 @@ set(OPENSSL_ROOT_DIR /usr/local/opt/openssl@3)
 
 find_package(OpenSSL REQUIRED)
 
-add_executable(SecurityProtocol main.cpp itcastderlog.h itcast_asn1_der.h keymng_msg.h PoolSocket.h
-    BaseAsn1.cpp BaseAsn1.h Codec.h Codec.cpp itcastderlog.cpp itcast_asn1_der.cpp PoolSocket.cpp)
+add_subdirectory(client)
+add_subdirectory(server)
 
-install(TARGETS SecurityProtocol
-    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
+install(TARGETS client server
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 
 include_directories(/usr/local/opt/openssl@3/include)
 
-target_link_libraries(${PROJECT_NAME} OpenSSL::Crypto)
+target_link_libraries(client server OpenSSL::Crypto)
+
 
 
 
